@@ -14,47 +14,137 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 28px;
+      gap: 22px;
       padding: 24px;
     }
     h1 {
+      color: #1a202c;
       font-size: 22px;
       font-weight: 700;
-      color: #1a202c;
+      text-align: center;
+    }
+    .tag-id-text {
+      color: #334155;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      word-break: break-all;
+    }
+    .status-text {
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.5;
+      max-width: 340px;
+      min-height: 42px;
       text-align: center;
     }
     .line-btn {
-      display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 12px;
-      background: #06C755;
-      color: white;
+      border: 0;
+      border-radius: 14px;
+      display: flex;
       font-size: 17px;
       font-weight: 700;
-      border-radius: 14px;
-      padding: 16px 32px;
+      gap: 12px;
+      justify-content: center;
+      min-width: 220px;
+      padding: 16px 28px;
       text-decoration: none;
     }
+    .line-btn {
+      background: #06C755;
+      color: white;
+    }
     .line-btn:hover { background: #05a847; }
+    .start-btn {
+      background: #1f2937;
+      border: 0;
+      border-radius: 14px;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 700;
+      min-width: 220px;
+      padding: 14px 24px;
+    }
+    .start-btn[hidden] {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <h1>NFC タグ 検出</h1>
-  <a id="lineBtn" class="line-btn" href="#">
-    <svg width="26" height="26" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <h1>NFC&#12479;&#12464;&#35501;&#12415;&#21462;&#12426;</h1>
+  <p id="tagIdText" class="tag-id-text">NFC UID: UID-UNKNOWN</p>
+  <p id="statusText" class="status-text"></p>
+  <button id="startBtn" class="start-btn" type="button">NFC&#12434;&#12473;&#12461;&#12515;&#12531;</button>
+  <a id="lineBtn" class="line-btn" href="#" target="_blank" rel="noopener noreferrer">
+    <svg width="26" height="26" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <rect width="48" height="48" rx="10" fill="white"/>
       <path d="M24 8C15.163 8 8 14.268 8 22c0 5.455 3.497 10.207 8.748 12.885-.384 1.432-1.393 5.197-1.596 6.002-.248.993.363.98.764.713.313-.207 4.976-3.387 6.99-4.757A19.3 19.3 0 0024 37c8.837 0 16-6.268 16-14S32.837 8 24 8z" fill="#06C755"/>
       <path d="M20.5 25.5h-2v-7h2v7zm4.5 0h-2l-3-4.5v4.5h-2v-7h2l3 4.5V18.5h2v7zm4 0h-5v-7h5v1.75h-3v1h3v1.75h-3v.75h3V25.5zm4-5.25h-2v5.25h-2V20.25h-2V18.5h6v1.75z" fill="white"/>
     </svg>
-    LINEで通知する
+    LINE&#12391;&#36890;&#30693;&#12377;&#12427;
   </a>
+
   <script>
-    var params = new URLSearchParams(window.location.search);
-    var nfcId = params.get("id") || "TAG-UNKNOWN";
-    var now = new Date();
-    var message = encodeURIComponent("【NFC通知】\\nTag ID: " + nfcId + "\\n時刻: " + now.toLocaleString("ja-JP"));
-    document.getElementById("lineBtn").href = "https://line.me/R/share?text=" + message;
+    const tagIdText = document.getElementById("tagIdText");
+    const lineBtn = document.getElementById("lineBtn");
+    const statusText = document.getElementById("statusText");
+    const startBtn = document.getElementById("startBtn");
+
+    let resolvedUid = "UID-UNKNOWN";
+
+    function updateLineMessage(uid) {
+      const now = new Date();
+      tagIdText.textContent = "NFC UID: " + uid;
+      const message = encodeURIComponent(
+        "\u3010NFC\u901a\u77e5\u3011\nNFC UID: " + uid + "\n\u6642\u9593: " + now.toLocaleString("ja-JP")
+      );
+      lineBtn.href = "https://line.me/R/share?text=" + message;
+    }
+
+    async function startNfcScan() {
+      if (!("NDEFReader" in window)) {
+        statusText.textContent = "\u3053\u306e\u30d6\u30e9\u30a6\u30b6\u306fWeb NFC\u306b\u5bfe\u5fdc\u3057\u3066\u3044\u307e\u305b\u3093\u3002Android\u306eChrome\u3067\u958b\u3044\u3066\u304f\u3060\u3055\u3044\u3002";
+        startBtn.disabled = true;
+        return;
+      }
+
+      try {
+        startBtn.disabled = true;
+        statusText.textContent = "NFC\u30bf\u30b0\u3092\u8aad\u307f\u53d6\u308a\u4e2d\u3067\u3059\u3002\u30bf\u30b0\u3092\u30b9\u30de\u30fc\u30c8\u30d5\u30a9\u30f3\u306b\u304b\u3056\u3057\u305f\u307e\u307e\u306b\u3057\u3066\u304f\u3060\u3055\u3044\u3002";
+
+        const ndef = new NDEFReader();
+        await ndef.scan();
+
+        ndef.onreading = (event) => {
+          resolvedUid = event.serialNumber || "NO-UID";
+          updateLineMessage(resolvedUid);
+          statusText.textContent = "NFC\u30bf\u30b0\u3092\u8aad\u307f\u53d6\u308a\u307e\u3057\u305f\u3002LINE\u3067\u901a\u77e5\u3067\u304d\u307e\u3059\u3002";
+          startBtn.disabled = false;
+        };
+
+        ndef.onreadingerror = () => {
+          statusText.textContent = "NFC\u30bf\u30b0\u3092\u8aad\u307f\u53d6\u308c\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u3082\u3046\u4e00\u5ea6\u8a66\u3057\u3066\u304f\u3060\u3055\u3044\u3002";
+          startBtn.disabled = false;
+        };
+      } catch (error) {
+        startBtn.disabled = false;
+        statusText.textContent = "NFC\u8aad\u307f\u53d6\u308a\u3092\u958b\u59cb\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f: " + error.message;
+      }
+    }
+
+    updateLineMessage(resolvedUid);
+
+    if ("NDEFReader" in window) {
+      statusText.textContent = "NFC\u30b9\u30ad\u30e3\u30f3\u30dc\u30bf\u30f3\u3092\u62bc\u3057\u3066\u304b\u3089\u3001\u30bf\u30b0\u3092\u304b\u3056\u3057\u3066\u304f\u3060\u3055\u3044\u3002";
+    } else {
+      statusText.textContent = "Web NFC\u975e\u5bfe\u5fdc\u306e\u30d6\u30e9\u30a6\u30b6\u3067\u3059\u3002Android\u306eChrome\u3067\u958b\u3044\u3066\u304f\u3060\u3055\u3044\u3002";
+      startBtn.disabled = true;
+    }
+
+    startBtn.addEventListener("click", startNfcScan);
   </script>
 </body>
 </html>
