@@ -77,7 +77,7 @@
   <h1>NFC&#12479;&#12464;&#35501;&#12415;&#21462;&#12426;</h1>
   <p id="tagIdText" class="tag-id-text">NFC UID: UID-UNKNOWN</p>
   <p id="statusText" class="status-text"></p>
-  <button id="startBtn" class="start-btn" type="button" hidden>NFC&#12434;&#12473;&#12461;&#12515;&#12531;</button>
+  <button id="startBtn" class="start-btn" type="button">NFC&#12434;&#12473;&#12461;&#12515;&#12531;</button>
   <a id="lineBtn" class="line-btn" href="#" target="_blank" rel="noopener noreferrer">
     <svg width="26" height="26" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <rect width="48" height="48" rx="10" fill="white"/>
@@ -94,13 +94,6 @@
     const startBtn = document.getElementById("startBtn");
 
     let resolvedUid = "UID-UNKNOWN";
-    let scanStarted = false;
-
-    function formatUid(value) {
-      return String(value || "")
-        .replace(/[^0-9a-f]/gi, "")
-        .toUpperCase() || "NO-UID";
-    }
 
     function updateLineMessage(uid) {
       const now = new Date();
@@ -112,8 +105,6 @@
     }
 
     async function startNfcScan() {
-      if (scanStarted) return;
-
       if (!("NDEFReader" in window)) {
         statusText.textContent = "\u3053\u306e\u30d6\u30e9\u30a6\u30b6\u306fWeb NFC\u306b\u5bfe\u5fdc\u3057\u3066\u3044\u307e\u305b\u3093\u3002Android\u306eChrome\u3067\u958b\u3044\u3066\u304f\u3060\u3055\u3044\u3002";
         startBtn.disabled = true;
@@ -121,7 +112,6 @@
       }
 
       try {
-        scanStarted = true;
         startBtn.disabled = true;
         statusText.textContent = "NFC\u30bf\u30b0\u3092\u8aad\u307f\u53d6\u308a\u4e2d\u3067\u3059\u3002\u30bf\u30b0\u3092\u30b9\u30de\u30fc\u30c8\u30d5\u30a9\u30f3\u306b\u304b\u3056\u3057\u305f\u307e\u307e\u306b\u3057\u3066\u304f\u3060\u3055\u3044\u3002";
 
@@ -129,16 +119,17 @@
         await ndef.scan();
 
         ndef.onreading = (event) => {
-          resolvedUid = formatUid(event.serialNumber);
+          resolvedUid = event.serialNumber || "NO-UID";
           updateLineMessage(resolvedUid);
           statusText.textContent = "NFC\u30bf\u30b0\u3092\u8aad\u307f\u53d6\u308a\u307e\u3057\u305f\u3002LINE\u3067\u901a\u77e5\u3067\u304d\u307e\u3059\u3002";
+          startBtn.disabled = false;
         };
 
         ndef.onreadingerror = () => {
           statusText.textContent = "NFC\u30bf\u30b0\u3092\u8aad\u307f\u53d6\u308c\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u3082\u3046\u4e00\u5ea6\u8a66\u3057\u3066\u304f\u3060\u3055\u3044\u3002";
+          startBtn.disabled = false;
         };
       } catch (error) {
-        scanStarted = false;
         startBtn.disabled = false;
         statusText.textContent = "NFC\u8aad\u307f\u53d6\u308a\u3092\u958b\u59cb\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f: " + error.message;
       }
@@ -147,20 +138,13 @@
     updateLineMessage(resolvedUid);
 
     if ("NDEFReader" in window) {
-      statusText.textContent = "\u753b\u9762\u30921\u56de\u30bf\u30c3\u30d7\u3057\u3066\u304b\u3089\u3001NFC\u30bf\u30b0\u3092\u304b\u3056\u3057\u3066\u304f\u3060\u3055\u3044\u3002";
+      statusText.textContent = "NFC\u30b9\u30ad\u30e3\u30f3\u30dc\u30bf\u30f3\u3092\u62bc\u3057\u3066\u304b\u3089\u3001\u30bf\u30b0\u3092\u304b\u3056\u3057\u3066\u304f\u3060\u3055\u3044\u3002";
     } else {
       statusText.textContent = "Web NFC\u975e\u5bfe\u5fdc\u306e\u30d6\u30e9\u30a6\u30b6\u3067\u3059\u3002Android\u306eChrome\u3067\u958b\u3044\u3066\u304f\u3060\u3055\u3044\u3002";
       startBtn.disabled = true;
     }
 
     startBtn.addEventListener("click", startNfcScan);
-    lineBtn.addEventListener("click", (event) => {
-      if (resolvedUid === "UID-UNKNOWN" || resolvedUid === "NO-UID") {
-        event.preventDefault();
-        startNfcScan();
-      }
-    });
-    document.addEventListener("pointerup", startNfcScan, { once: true });
   </script>
 </body>
 </html>
